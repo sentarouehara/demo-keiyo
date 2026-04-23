@@ -312,6 +312,137 @@ function demo_keiyo_get_school_demo_meta( $post_id, $field_key ) {
 }
 
 /**
+ * Returns a TablePress edit URL when the shortcode is available.
+ *
+ * @param string $table_id Table ID.
+ * @return string
+ */
+function demo_keiyo_get_tablepress_edit_url( $table_id ) {
+	$table_id = trim( (string) $table_id );
+	if ( '' === $table_id || ! shortcode_exists( 'table' ) ) {
+		return '';
+	}
+
+	return admin_url( 'admin.php?page=tablepress&action=edit&table_id=' . rawurlencode( $table_id ) );
+}
+
+/**
+ * Adds custom columns to the school demo list table.
+ *
+ * @param array<string, string> $columns Existing columns.
+ * @return array<string, string>
+ */
+function demo_keiyo_school_demo_admin_columns( $columns ) {
+	$date_column = isset( $columns['date'] ) ? $columns['date'] : '';
+
+	unset( $columns['date'] );
+
+	$columns['department']           = '学科名';
+	$columns['yearly_table_id']      = '年度比較表ID';
+	$columns['concurrent_table_id']  = '併願校表ID';
+	$columns['related_table_links']  = '関連表リンク';
+
+	if ( '' !== $date_column ) {
+		$columns['date'] = $date_column;
+	}
+
+	return $columns;
+}
+add_filter( 'manage_school_demo_posts_columns', 'demo_keiyo_school_demo_admin_columns' );
+
+/**
+ * Renders custom column values for the school demo list table.
+ *
+ * @param string $column  Column name.
+ * @param int    $post_id Post ID.
+ */
+function demo_keiyo_render_school_demo_admin_column( $column, $post_id ) {
+	if ( ! in_array( $column, array( 'department', 'yearly_table_id', 'concurrent_table_id', 'related_table_links' ), true ) ) {
+		return;
+	}
+
+	$department      = demo_keiyo_get_school_demo_meta( $post_id, 'department' );
+	$yearly_table    = demo_keiyo_get_school_demo_meta( $post_id, 'yearly_table_id' );
+	$concurrent_table = demo_keiyo_get_school_demo_meta( $post_id, 'concurrent_table_id' );
+
+	switch ( $column ) {
+		case 'department':
+			echo '' !== $department ? esc_html( $department ) : '&mdash;';
+			break;
+
+		case 'yearly_table_id':
+			echo '' !== $yearly_table ? esc_html( $yearly_table ) : '&mdash;';
+			break;
+
+		case 'concurrent_table_id':
+			echo '' !== $concurrent_table ? esc_html( $concurrent_table ) : '&mdash;';
+			break;
+
+		case 'related_table_links':
+			$links = array();
+
+			if ( '' !== $yearly_table ) {
+				$yearly_url = demo_keiyo_get_tablepress_edit_url( $yearly_table );
+				if ( '' !== $yearly_url ) {
+					$links[] = sprintf(
+						'<a href="%1$s">%2$s</a>',
+						esc_url( $yearly_url ),
+						esc_html__( '年度比較表を編集', 'demo-keiyo' )
+					);
+				}
+			}
+
+			if ( '' !== $concurrent_table ) {
+				$concurrent_url = demo_keiyo_get_tablepress_edit_url( $concurrent_table );
+				if ( '' !== $concurrent_url ) {
+					$links[] = sprintf(
+						'<a href="%1$s">%2$s</a>',
+						esc_url( $concurrent_url ),
+						esc_html__( '併願校表を編集', 'demo-keiyo' )
+					);
+				}
+			}
+
+			if ( empty( $links ) ) {
+				echo '&mdash;';
+				break;
+			}
+
+			echo wp_kses_post( implode( ' | ', $links ) );
+			break;
+	}
+}
+add_action( 'manage_school_demo_posts_custom_column', 'demo_keiyo_render_school_demo_admin_column', 10, 2 );
+
+/**
+ * Sets widths for custom admin columns on the school demo list screen.
+ */
+function demo_keiyo_school_demo_admin_column_styles() {
+	$screen = get_current_screen();
+
+	if ( ! $screen || 'edit-school_demo' !== $screen->id ) {
+		return;
+	}
+	?>
+	<style>
+		.column-department {
+			width: 12%;
+		}
+
+		.column-yearly_table_id,
+		.column-concurrent_table_id {
+			width: 10%;
+		}
+
+		.column-related_table_links {
+			width: 20%;
+		}
+	</style>
+	<?php
+}
+add_action( 'admin_head', 'demo_keiyo_school_demo_admin_column_styles' );
+
+/**
  * Renders a TablePress table or a safe placeholder.
  *
  * @param string $table_id     Table ID.
