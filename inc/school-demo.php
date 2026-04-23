@@ -319,6 +319,7 @@ function demo_keiyo_get_school_demo_meta( $post_id, $field_key ) {
  */
 function demo_keiyo_get_tablepress_edit_url( $table_id ) {
 	$table_id = trim( (string) $table_id );
+
 	if ( '' === $table_id || ! shortcode_exists( 'table' ) ) {
 		return '';
 	}
